@@ -1,0 +1,33 @@
+{% load wagtailcore_tags %}<footer data-is="footer">
+	<div data-is="large-logo" aria-hidden="true"></div>
+	<div>
+		<h4>Info</h4>
+		<div data-is="footer-links">
+			<a href="#">Ethics</a>
+			<a href="#">Privacy</a>
+			<a href="#">Terms</a>
+			<a href="#" data-u="info" data-d="undoneltd.com" data-copy aria-live="polite">Copy Email</a>
+			<a href="#">Login</a>
+		</div>
+	</div>
+	<div>
+		<h4>Pages</h4>
+		<div data-is="footer-links">
+			{% if root %}<a href="{% pageurl root %}">Home</a>{% endif %}
+			{% for item in root.get_children.live.in_menu %}<a href="{% pageurl item %}">{{ item.title }}</a>
+			{% endfor %}
+			<a href="#">Search</a>
+		</div>
+	</div>
+	<form data-is="newsletter" action="#" method="post">
+		{% csrf_token %}
+		<h4>LLM Investor Prospectus</h4>
+		<div data-is="field">
+			<input type="email" name="email" placeholder="Email address" aria-label="Email address" autocomplete="email" required>
+			<button type="submit">Request</button>
+		</div>
+	</form>
+	<div data-is="copyright">
+		<p>©{% now "Y" %} Undone Ltd · Hong Kong</p><p lang="zh-Hant-HK">混沌 · 香港</p>
+	</div>
+</footer>

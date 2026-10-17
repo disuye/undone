@@ -1,0 +1,56 @@
+{% load static wagtailcore_tags %}<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<title>{% block title %}{% firstof page.seo_title page.title %} — Undone Limited{% endblock %}</title>
+		<meta name="description" content="{% firstof page.search_description 'Undone Ltd — Research & Development. Hong Kong.' %}">
+		{% if page %}<link rel="canonical" href="{{ page.full_url }}">{% endif %}
+
+		<meta name="color-scheme" content="light">
+		<meta name="theme-color" content="#FF5A2C">
+
+		<meta property="og:type" content="website">
+		{% if page %}<meta property="og:url" content="{{ page.full_url }}">{% endif %}
+		<meta property="og:title" content="{% firstof page.seo_title page.title 'Undone Limited' %}">
+		<meta property="og:description" content="{% firstof page.search_description 'Research & Development. Hong Kong.' %}">
+		<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'assets/img/undone-og.png' %}">
+		<meta property="og:image:width" content="1200">
+		<meta property="og:image:height" content="630">
+		<meta property="og:image:alt" content="Undone Limited logo">
+		<meta name="twitter:card" content="summary_large_image">
+
+		<link rel="icon" href="{% static 'assets/favicon/favicon.ico' %}" sizes="any">
+		<link rel="icon" type="image/png" sizes="32x32" href="{% static 'assets/favicon/favicon-32x32.png' %}">
+		<link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets/favicon/favicon-16x16.png' %}">
+		<link rel="apple-touch-icon" href="{% static 'assets/favicon/apple-touch-icon.png' %}">
+		<link rel="manifest" href="{% static 'assets/favicon/site.webmanifest' %}">
+
+		<link rel="preload" href="{% static 'assets/fonts/BricolageGrotesque-Variable-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="{% static 'assets/fonts/SchibstedGrotesk-Variable-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="{% static 'assets/fonts/Inter-Variable-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
+		<link rel="stylesheet" href="{% static 'assets/css/reset.css' %}">
+		<link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+
+		<script src="{% static 'assets/js/main.js' %}" defer></script>
+		<script src="{% static 'assets/js/crt.js' %}" defer></script>
+	</head>
+	<body id="top">
+		<div data-is="vertical-logo" aria-hidden="true"></div>
+		<canvas data-is="crt" aria-hidden="true"></canvas>
+
+		{% wagtail_site as current_site %}
+		<header data-is="masthead">
+			{% include "includes/nav.html" with root=current_site.root_page %}
+			{% block splash %}{% endblock %}
+		</header>
+
+		<main id="content">
+			{% block content %}
+				{% for block in page.body %}{% include_block block %}{% endfor %}
+			{% endblock %}
+		</main>
+
+		{% include "includes/footer.html" with root=current_site.root_page %}
+	</body>
+</html>

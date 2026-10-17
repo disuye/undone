@@ -1,0 +1,8 @@
+<article data-is="spec">
+	<h4>{{ value.heading }}</h4>
+	<div role="list">
+		{% for row in value.rows %}<div role="listitem"><p>{{ row.label }}</p><p>{{ row.code }}</p></div>
+		{% endfor %}
+	</div>
+	{% if value.meta %}<p data-is="meta">{{ value.meta }}</p>{% endif %}
+</article>

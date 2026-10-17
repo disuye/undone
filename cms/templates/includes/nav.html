@@ -1,0 +1,12 @@
+{% load wagtailcore_tags %}<nav aria-label="Primary">
+	<a href="{% if root %}{% pageurl root %}{% else %}/{% endif %}" data-is="undone-text-logo" aria-label="Undone — home"></a>
+	<p data-is="hk-time" aria-label="Hong Kong time">HKT</p>
+	<button type="button" popovertarget="menu" data-is="menu-button">Menu</button>
+	<div popover id="menu" data-is="nav-menu">
+		{% for block in page.body %}{% if block.block_type == "divider" and block.value.anchor %}<a href="#{{ block.value.anchor }}">{{ block.value.heading }}</a>
+		{% endif %}{% endfor %}
+		{% for item in root.get_children.live.in_menu %}<a href="{% pageurl item %}">{{ item.title }}</a>
+		{% endfor %}
+		<button type="button" popovertarget="menu" popovertargetaction="hide" data-is="menu-button">Close</button>
+	</div>
+</nav>

@@ -1,0 +1,14 @@
+{% if value.prompt %}<p>{{ value.prompt }}</p>{% endif %}
+<form data-is="contact" action="#" method="post" id="contact">
+	{% csrf_token %}
+	<div data-is="field">
+		<input type="text" name="name" placeholder="Name" aria-label="Name" autocomplete="name" required>
+	</div>
+	<div data-is="field">
+		<input type="email" name="email" placeholder="Email address" aria-label="Email address" autocomplete="email" required>
+	</div>
+	<div data-is="field">
+		<textarea name="message" rows="3" placeholder="Message" aria-label="Message" required></textarea>
+		<button type="submit" data-is="icon-contact" aria-label="Send"></button>
+	</div>
+</form>

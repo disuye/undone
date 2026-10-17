@@ -1,0 +1,8 @@
+.DS_Store
+_construction/
+# CMS
+__pycache__/
+cms/.venv/
+cms/.env
+cms/media/
+cms/static/

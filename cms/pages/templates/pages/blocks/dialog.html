@@ -1,0 +1,6 @@
+{% load wagtailcore_tags %}<article data-is="dialog">
+	<div data-is="statement">
+		{% for child in value %}{% if child.block_type != "postscript" %}{% include_block child %}{% endif %}{% endfor %}
+	</div>
+	{% for child in value %}{% if child.block_type == "postscript" %}{% include_block child with id=child.id %}{% endif %}{% endfor %}
+</article>
