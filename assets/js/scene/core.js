@@ -1,5 +1,5 @@
 import {
-  CylinderGeometry, Group, Mesh, PointLight, SphereGeometry, TorusGeometry, Vector3,
+  Group, Mesh, PointLight, SphereGeometry, TorusGeometry, Vector3,
 } from '../vendor/three.module.js';
 import { smootherstep } from './motion.js';
 
@@ -8,15 +8,11 @@ const SPREAD = 0.3;
 const CYCLE = 14;
 const LIGHT = { closed: 0.05, open: 45, reach: 12 };
 
-// "Undone": a sphere of eight shells that slowly takes itself apart around a lit core.
+// "Undone": a sphere of eight shells, floating unexplained, that slowly takes itself apart around a lit core.
 // The core is a shadow-casting point light, so light escapes in blades through the gaps;
 // a dark mechanical liner keeps the shells' insides from flaring under it.
 export const createCore = (m, { shadows }) => {
   const group = new Group();
-
-  const pedestal = new Mesh(new CylinderGeometry(0.16, 0.3, 0.95, 8), m.armourGrey);
-  pedestal.position.y = -1.12;
-  pedestal.castShadow = pedestal.receiveShadow = true;
 
   const core = new Mesh(new SphereGeometry(0.2, 32, 16), m.glow);
   const light = new PointLight(0xfff6ea, 0, LIGHT.reach, 2);
@@ -29,10 +25,14 @@ export const createCore = (m, { shadows }) => {
     light.shadow.normalBias = 0.01;
   }
 
+  // Energy rings: additive, unshadowed and depth-transparent, so arms pass through them.
   const rings = [0, 1].map((i) => {
-    const ring = new Mesh(new TorusGeometry(0.82 + i * 0.1, 0.022, 6, 96), m.steel);
+    const ring = new Group();
+    ring.add(
+      new Mesh(new TorusGeometry(0.82 + i * 0.1, 0.006, 6, 160), m.energy),
+      new Mesh(new TorusGeometry(0.82 + i * 0.1, 0.03, 8, 160), m.energyHalo),
+    );
     ring.rotation.set(Math.PI / 2 + i * 0.5, 0, i * 0.3);
-    ring.castShadow = true;
     return ring;
   });
 
@@ -56,7 +56,7 @@ export const createCore = (m, { shadows }) => {
     }
   }
 
-  group.add(pedestal, core, light, ...rings, ...shells.map((s) => s.mesh));
+  group.add(core, light, ...rings, ...shells.map((s) => s.mesh));
 
   // Open, hold, close, hold — on a slow cycle.
   const openness = (time) => {
@@ -76,6 +76,8 @@ export const createCore = (m, { shadows }) => {
     rings[0].rotation.z = time * 0.08;
     rings[1].rotation.y = -time * 0.05;
     light.intensity = LIGHT.closed + a * LIGHT.open;
+    m.energy.opacity = 0.45 + a * 0.3 + Math.sin(time * 23) * Math.sin(time * 3.1) * 0.08;
+    m.energyHalo.opacity = 0.08 + a * 0.08;
   };
 
   return { object: group, update };

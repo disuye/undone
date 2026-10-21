@@ -1,7 +1,7 @@
-import { BoxGeometry, InstancedMesh, Matrix4, Vector3 } from '../vendor/three.module.js';
+import { BoxGeometry, Group, InstancedMesh, Matrix4, Vector3 } from '../vendor/three.module.js';
 import { at, block, droop, hose, plate, prism, rng } from './parts.js';
 
-// Prototyping-lab mess: overhead cable trays, droops, floor runs, a bench, a cart, a light stand.
+// Prototyping-lab mess: overhead cable trays, droops, floor runs, a bench, a cart, an LED panel stand.
 export const createClutter = (m, { room, cell, mounts }) => {
   const r = rng(21);
   const pick = (list) => list[Math.floor(r() * list.length)];
@@ -55,19 +55,22 @@ export const createClutter = (m, { room, cell, mounts }) => {
     objects.push(hose(pts, 0.018 + r() * 0.02, cable(), cast));
   };
 
-  for (let i = 0; i < 2; i += 1) drop(new Vector3(cell.x + jitter(0.5), 0.05, cell.z + jitter(0.5)), true);
-  mounts.filter((p) => p.y < 1).forEach((p) => { for (let i = 0; i < 1; i += 1) drop(new Vector3(p.x + jitter(0.6), 0.04, p.z + jitter(0.6)), false); });
+  const bases = mounts.filter((p) => p.y < 1);
+  const nearestBase = (x) => bases.reduce((a, b) => (Math.abs(b.x - x) < Math.abs(a.x - x) ? b : a));
+  const baseInlet = (p, side) => [p.x - side * 0.45 + jitter(0.2), 0.12, p.z + jitter(0.3)];
+  bases.forEach((p) => { for (let i = 0; i < 2; i += 1) drop(new Vector3(p.x + jitter(0.6), 0.04, p.z + jitter(0.6)), false); });
 
-  // Floor runs from wall outlets to the cell, loosely bundled.
+  // Floor runs from wall outlets to each arm base, loosely bundled.
   [-1, 1].forEach((side) => {
     const wall = side * (room.width / 2 - 0.05);
-    const z0 = cell.z + 2.5 + jitter(1);
+    const base = nearestBase(wall);
+    const z0 = base.z + 2.2 + jitter(1);
     for (let i = 0; i < 3; i += 1) {
       objects.push(hose([
         [wall, 0.35, z0 + i * 0.08], [wall - side * 0.2, 0.03, z0 + i * 0.1],
-        [wall * 0.55 + jitter(0.4), 0.03, z0 - 0.6 + jitter(0.5)],
-        [cell.x + side * 0.9 + jitter(0.3), 0.03, cell.z + 1.1 + jitter(0.4)],
-        [cell.x + side * 0.25, 0.05, cell.z + 0.15],
+        [(wall + base.x) / 2 + jitter(0.4), 0.03, z0 - 0.6 + jitter(0.5)],
+        [base.x - side * 0.2 + jitter(0.3), 0.03, base.z + 1.0 + jitter(0.4)],
+        baseInlet(base, -side),
       ], 0.014 + r() * 0.012, cable()));
     }
   });
@@ -92,7 +95,7 @@ export const createClutter = (m, { room, cell, mounts }) => {
     at(plate([[0, 0], [0.3, 0], [0.24, 0.18], [0.04, 0.22]], 0.25, m.armourGrey), bench.x - 0.05, 0.93, bench.z + 1.05, 0, 1.1),
   );
   for (let i = 0; i < 3; i += 1) {
-    objects.push(hose([[bench.x - 0.2, 0.93, bench.z + jitter(1.5)], [bench.x + 0.3, 0.6, bench.z + jitter(1)], [bench.x + 0.7, 0.03, bench.z + jitter(1.2)], [cell.x - 1.2 + jitter(0.8), 0.03, cell.z + 1.6 + jitter(1)], [cell.x + jitter(0.3), 0.05, cell.z + 0.3]], 0.015, cable(), false));
+    objects.push(hose([[bench.x - 0.2, 0.93, bench.z + jitter(1.5)], [bench.x + 0.3, 0.6, bench.z + jitter(1)], [bench.x + 0.7, 0.03, bench.z + jitter(1.2)], [nearestBase(bench.x).x + 0.3 + jitter(0.5), 0.03, bench.z - 1.5 + jitter(1)], baseInlet(nearestBase(bench.x), -1)], 0.015, cable(), false));
   }
 
   // Rolling cart, right side.
@@ -108,16 +111,24 @@ export const createClutter = (m, { room, cell, mounts }) => {
     at(block(0.02, 0.02, 0.1, m.neon), cart.x - 0.21, 1.2, cart.z - 0.1, 0, 0.15),
   );
 
-  // Light stand aimed at the cell.
+  // LED panel on a tripod, aimed at the cell. Legs splay outward: tops meet at the hub, feet on the floor.
   const stand = new Vector3(1.9, 0, -2.6);
   for (let i = 0; i < 3; i += 1) {
     const a = i * Math.PI * 2 / 3 + 0.4;
-    objects.push(at(prism(0.012, 0.75, 6, m.mech), stand.x + Math.cos(a) * 0.22, 0.34, stand.z + Math.sin(a) * 0.22, Math.sin(a) * 0.55, 0, -Math.cos(a) * 0.55));
+    objects.push(at(prism(0.012, 0.75, 6, m.mech), stand.x + Math.cos(a) * 0.2, 0.33, stand.z + Math.sin(a) * 0.2, -Math.sin(a) * 0.55, 0, Math.cos(a) * 0.55));
   }
-  const aim = Math.atan2(cell.x - stand.x, cell.z - stand.z);
+  const head = new Group();
+  head.position.set(stand.x, 2.2, stand.z);
+  head.rotation.order = 'YXZ';
+  head.rotation.set(0.25, Math.atan2(cell.x - stand.x, cell.z - stand.z), 0);
+  head.add(
+    plate([[-0.3, -0.25], [0.32, -0.28], [0.36, 0.3], [-0.26, 0.24]], 0.08, m.armourGrey),
+    at(block(0.54, 0.44, 0.01, m.panel), 0.02, 0.01, 0.055),
+  );
   objects.push(
-    at(prism(0.018, 1.7, 6, m.mech), stand.x, 1.35, stand.z),
-    at(plate([[-0.3, -0.25], [0.32, -0.28], [0.36, 0.3], [-0.26, 0.24]], 0.12, m.armourGrey), stand.x, 2.2, stand.z, -0.25, aim, 0),
+    at(prism(0.03, 0.06, 6, m.mech), stand.x, 0.68, stand.z),
+    at(prism(0.018, 1.55, 6, m.mech), stand.x, 1.42, stand.z),
+    head,
     hose([[stand.x, 2.1, stand.z], [stand.x + 0.1, 1.2, stand.z + 0.05], [stand.x + 0.4, 0.03, stand.z + 0.3], [-4.9, 0.03, stand.z + 1.5]], 0.012, m.cables[0]),
   );
 

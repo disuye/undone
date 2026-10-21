@@ -5,6 +5,7 @@ import {
 import { aimYaw, createArm } from './arm.js';
 import { createClutter } from './clutter.js';
 import { createCore } from './core.js';
+import { createEquipment } from './equipment.js';
 import { createMarkings } from './markings.js';
 import { createMaterials, dustSprite } from './materials.js';
 import { at, block, hose, mesh, plate } from './parts.js';
@@ -49,25 +50,6 @@ const bays = (m) => {
 
   const kick = new BoxGeometry(0.04, 0.03, ROOM.length);
   [-1, 1].forEach((side) => objects.push(at(mesh(kick, m.light, still), side * (w / 2 - 0.02), 0.22, midZ)));
-  return objects;
-};
-
-// Equipment cabinets along the walls give the far depth something to resolve.
-const cabinets = (m) => {
-  const objects = [];
-  [-1, 1].forEach((side) => {
-    for (let z = ROOM.near - 6; z > far + 3; z -= 3.1) {
-      const nearFrame = Math.abs(((z - (ROOM.near - 3)) % BAY + BAY) % BAY) < 0.9;
-      if (Math.abs(z - CELL.z) < 3 || nearFrame) continue;
-      const tall = 1.6 + ((Math.abs(z * 7.3) % 1) * 0.9);
-      const x = side * (ROOM.width / 2 - 0.55);
-      objects.push(
-        at(block(0.9, tall, 1.3, m.armour), x, tall / 2, z),
-        at(block(0.02, 0.03, 0.5, Math.abs(z * 13) % 2 > 1.4 ? m.neon : m.light), x - side * 0.46, tall - 0.25, z),
-        hose([[x, tall, z + 0.3], [x - side * 0.2, tall + 0.6, z + 0.5], [x - side * 0.1, ROOM.height - 0.6, z + 0.2]], 0.02, m.cables[(Math.abs(Math.round(z)) % 3)]),
-      );
-    }
-  });
   return objects;
 };
 
@@ -163,9 +145,10 @@ export const buildLab = ({ dustCount, coreShadows }) => {
 
   const rigs = arms(m);
   const motes = dust(dustCount);
+  const equipment = createEquipment(m, { room: ROOM, cell: CELL, bay: BAY, far });
 
   group.add(
-    ...shell(m), ...bays(m), ...cabinets(m), ...lights(),
+    ...shell(m), ...bays(m), ...equipment.objects, ...lights(),
     ...createMarkings(rigs.map((r) => r.zone)),
     ...createClutter(m, { room: ROOM, cell: CELL, mounts: rigs.map((r) => r.object.position) }),
     core.object, motes, ...rigs.map((r) => r.object),
@@ -173,6 +156,7 @@ export const buildLab = ({ dustCount, coreShadows }) => {
 
   const update = (time) => {
     core.update(time);
+    equipment.update(time);
     rigs.forEach((r) => r.update(time));
     motes.position.y = Math.sin(time * 0.07) * 0.25;
     motes.rotation.y = Math.sin(time * 0.03) * 0.02;

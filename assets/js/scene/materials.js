@@ -1,5 +1,5 @@
 import {
-  BackSide, CanvasTexture, Color, MeshBasicMaterial, MeshPhysicalMaterial, MeshStandardMaterial,
+  AdditiveBlending, BackSide, CanvasTexture, Color, DoubleSide, MeshBasicMaterial, MeshPhysicalMaterial, MeshStandardMaterial,
   RepeatWrapping, SRGBColorSpace,
 } from '../vendor/three.module.js';
 import { rng } from './parts.js';
@@ -181,6 +181,11 @@ const emissive = (hex, intensity) => new MeshBasicMaterial({
   color: new Color(hex).multiplyScalar(intensity),
 });
 
+const energy = (intensity, opacity) => new MeshBasicMaterial({
+  color: new Color(0xfff4e4).multiplyScalar(intensity),
+  transparent: true, opacity, blending: AdditiveBlending, depthWrite: false,
+});
+
 const rubber = (color) => new MeshStandardMaterial({ color, roughness: 0.62 });
 
 export const createMaterials = (room) => {
@@ -204,12 +209,16 @@ export const createMaterials = (room) => {
     mech: new MeshStandardMaterial({ color: 0x8b8880, roughness: 0.5, metalness: 0.55 }),
     shell: new MeshPhysicalMaterial({ color: 0xf4f2ed, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08 }),
     liner: new MeshStandardMaterial({ color: 0x2f2d2a, roughness: 0.7, metalness: 0.3, side: BackSide }),
+    horn: new MeshStandardMaterial({ color: 0x9c998f, roughness: 0.75, metalness: 0.1, side: DoubleSide }),
+    energy: energy(2.2, 0.55),
+    energyHalo: energy(1.2, 0.1),
     steel: new MeshStandardMaterial({ color: 0x9a978f, roughness: 0.28, metalness: 1 }),
     cables: [rubber(0x1e1e1d), rubber(0x2e2d2b), rubber(0x55534e), rubber(0xd9d6cf), rubber(0xff5a2c)],
     housing: new MeshStandardMaterial({ color: 0x8f8c85, roughness: 0.7 }),
     screen: emissive(0xcfe0e4, 0.9),
+    panel: emissive(0xfff9f0, 1.6),
     light: emissive(0xfffcf8, 3.2),
-    glow: emissive(0xfff8ef, 3.5),
+    glow: emissive(0xfff8ef, 2.4),
     neon: emissive(0xfdfd0d, 1.4),
   };
 };
