@@ -6,11 +6,15 @@ import { buildLab, CELL } from './lab.js';
 import { createPost } from './post.js';
 import { damp } from './motion.js';
 
+// coreShadows: cube-map size for the orb's point light (0 = no shadows; it's 6 extra passes).
 const TIERS = {
-  high: { pixelRatio: 1.5, dust: 900, shadowMap: 1024 },
-  low: { pixelRatio: 1, dust: 400, shadowMap: 512 },
+  high: { pixelRatio: 1.5, dust: 900, shadowMap: 1024, coreShadows: 512 },
+  low: { pixelRatio: 1, dust: 400, shadowMap: 512, coreShadows: 0 },
 };
-const SLOW_FRAME_MS = 1000 / 40;
+
+// Filmic cadence: 30fps divides 60/120Hz evenly (24 judders on 60Hz panels) and halves GPU work.
+const FPS = 30;
+const STEP = 1 / FPS;
 
 const canvas = document.querySelector('[data-is="scene"]');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -52,7 +56,7 @@ const createScene = (renderer, tint, tier) => {
   pmrem.dispose();
 
   RectAreaLightUniformsLib.init();
-  const lab = buildLab({ dustCount: TIERS[tier].dust });
+  const lab = buildLab({ dustCount: TIERS[tier].dust, coreShadows: TIERS[tier].coreShadows });
   lab.group.traverse((o) => { if (o.isSpotLight) o.shadow.mapSize.setScalar(TIERS[tier].shadowMap); });
   scene.add(lab.group);
   return { scene, lab };
@@ -108,24 +112,30 @@ const boot = () => {
     post.render(time, rig(time, dt));
   };
 
-  // Drop to the cheaper tier once if the GPU can't hold ~40fps.
+  // Drop post-processing to the cheaper tier once if rendered frames can't keep the cadence.
   let frames = 0;
-  let slowTime = 0;
+  let spent = 0;
   const watchFrameRate = (dt) => {
-    if (tier === 'low' || frames++ < 30 || frames > 150) return;
-    slowTime += dt;
-    if (frames < 150 || slowTime / 120 * 1000 < SLOW_FRAME_MS) return;
+    if (tier === 'low' || frames++ < 15 || frames > 75) return;
+    spent += dt;
+    if (frames < 75 || spent / 60 < STEP * 1.35) return;
     tier = 'low';
     post.dispose();
     post = createPost(renderer, scene, camera, { tier, tint });
     resize();
   };
 
+  // The display still ticks at its own rate; render on every Nth vsync once STEP has elapsed
+  // (60Hz → every 2nd, 120Hz → every 4th) so frames stay evenly paced.
   let last = performance.now();
+  let pending = 0;
   const frame = (ms) => {
-    const dt = Math.min((ms - last) / 1000, 0.1);
+    pending += Math.min((ms - last) / 1000, 0.25);
     last = ms;
-    draw(ms / 1000, dt);
+    if (pending < STEP * 0.95) return;
+    const dt = pending;
+    pending = 0;
+    draw(ms / 1000, Math.min(dt, 0.1));
     watchFrameRate(dt);
   };
 

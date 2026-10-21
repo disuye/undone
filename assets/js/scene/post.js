@@ -64,7 +64,7 @@ export const createPost = (renderer, scene, camera, { tier, tint }) => {
     composer.addPass(ao);
   }
 
-  composer.addPass(new UnrealBloomPass(size.clone(), 0.42, 0.75, 0.92));
+  composer.addPass(new UnrealBloomPass(size.clone(), 0.32, 0.6, 0.95));
 
   if (tier === 'high') {
     bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.0012, maxblur: 0.0045 });
