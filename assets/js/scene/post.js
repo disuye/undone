@@ -10,7 +10,7 @@ const GradeShader = {
     uTint: { value: new Vector3() },
     uLift: { value: 0.16 },
     uVignette: { value: 0.38 },
-    uAberration: { value: 0.0025 },
+    uAberration: { value: 0.0065 },
     uGrain: { value: 0.045 },
     uTime: { value: 0 },
   },
@@ -67,7 +67,7 @@ export const createPost = (renderer, scene, camera, { tier, tint }) => {
   composer.addPass(new UnrealBloomPass(size.clone(), 0.32, 0.6, 0.95));
 
   if (tier === 'high') {
-    bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.0012, maxblur: 0.0045 });
+    bokeh = new BokehPass(scene, camera, { focus: 12, aperture: 0.0028, maxblur: 0.009 });
     composer.addPass(bokeh);
   }
 

@@ -1,13 +1,14 @@
 import {
-  AdditiveBlending, BoxGeometry, BufferAttribute, BufferGeometry, Group, HemisphereLight,
-  PlaneGeometry, Points, PointsMaterial, RectAreaLight, SpotLight, Vector3,
+  BoxGeometry, Group, HemisphereLight,
+  PlaneGeometry, RectAreaLight, SpotLight, Vector3,
 } from '../vendor/three.module.js';
 import { aimYaw, createArm } from './arm.js';
 import { createClutter } from './clutter.js';
 import { createCore } from './core.js';
 import { createEquipment } from './equipment.js';
 import { createMarkings } from './markings.js';
-import { createMaterials, dustSprite } from './materials.js';
+import { createDust } from './dust.js';
+import { createMaterials } from './materials.js';
 import { at, block, hose, mesh, plate } from './parts.js';
 
 export const ROOM = { width: 11, height: 5.2, length: 46, near: 9 };
@@ -74,23 +75,6 @@ const lights = () => {
   return [hemi, ...rects, key, key.target];
 };
 
-const dust = (count) => {
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i += 1) {
-    positions.set([
-      (Math.random() - 0.5) * (ROOM.width - 1),
-      Math.random() * ROOM.height,
-      ROOM.near - Math.random() * 24,
-    ], i * 3);
-  }
-  const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new BufferAttribute(positions, 3));
-  return new Points(geometry, new PointsMaterial({
-    map: dustSprite(), size: 0.025, transparent: true, opacity: 0.55,
-    depthWrite: false, blending: AdditiveBlending,
-  }));
-};
-
 // Arm placements relative to the work cell; poses lean in toward the core.
 const ARMS = [
   {
@@ -144,22 +128,21 @@ export const buildLab = ({ dustCount, coreShadows }) => {
   core.object.position.copy(CELL);
 
   const rigs = arms(m);
-  const motes = dust(dustCount);
+  const motes = createDust(dustCount, { width: ROOM.width, height: ROOM.height, near: ROOM.near, depth: 22 });
   const equipment = createEquipment(m, { room: ROOM, cell: CELL, bay: BAY, far });
 
   group.add(
     ...shell(m), ...bays(m), ...equipment.objects, ...lights(),
     ...createMarkings(rigs.map((r) => r.zone)),
     ...createClutter(m, { room: ROOM, cell: CELL, mounts: rigs.map((r) => r.object.position) }),
-    core.object, motes, ...rigs.map((r) => r.object),
+    core.object, motes.object, ...rigs.map((r) => r.object),
   );
 
   const update = (time) => {
     core.update(time);
     equipment.update(time);
     rigs.forEach((r) => r.update(time));
-    motes.position.y = Math.sin(time * 0.07) * 0.25;
-    motes.rotation.y = Math.sin(time * 0.03) * 0.02;
+    motes.update(time);
   };
 
   return { group, update };

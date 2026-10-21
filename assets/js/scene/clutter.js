@@ -75,6 +75,26 @@ export const createClutter = (m, { room, cell, mounts }) => {
     }
   });
 
+  // Foreground: cables slung across the ceiling and loose ends dangling along the camera's path,
+  // so the scroll push travels through them. The ones near centre stay above eye height.
+  for (let i = 0; i < 10; i += 1) {
+    const z = room.near - 1.5 - r() * 9;
+    const a = new Vector3(-1 - r() * 3.5, room.height - 0.05, z);
+    const b = new Vector3(0.5 + r() * 3.5, room.height - 0.05, z + jitter(2.5));
+    objects.push(droop(a, b, 1.3 + r() * 1.2, new Vector3(0, 0, jitter(1)), 0.012 + r() * 0.025, cable()));
+  }
+  for (let i = 0; i < 9; i += 1) {
+    const x = jitter(6);
+    const z = room.near - 1 - r() * 9.5;
+    const end = Math.abs(x) < 1 ? 3.1 + r() * 0.7 : 1.7 + r() * 1.6;
+    const curl = jitter(0.5);
+    const radius = 0.012 + r() * 0.02;
+    objects.push(
+      hose([[x, room.height, z], [x + jitter(0.2), (room.height + end) / 2, z + jitter(0.2)], [x + curl, end + 0.15, z + jitter(0.3)], [x + curl * 1.6, end, z + jitter(0.3)]], radius, cable()),
+      at(block(radius * 3, 0.09, radius * 3, m.mech), x + curl * 1.6, end - 0.04, z),
+    );
+  }
+
   // Overhead arm: umbilicals drooping from the trays to its mount.
   mounts.filter((p) => p.y > 1).forEach((p) => {
     for (let i = 0; i < 3; i += 1) {

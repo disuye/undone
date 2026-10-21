@@ -8,8 +8,8 @@ import { damp } from './motion.js';
 
 // coreShadows: cube-map size for the orb's point light (0 = no shadows; it's 6 extra passes).
 const TIERS = {
-  high: { pixelRatio: 1.5, dust: 900, shadowMap: 1024, coreShadows: 512 },
-  low: { pixelRatio: 1, dust: 400, shadowMap: 512, coreShadows: 0 },
+  high: { pixelRatio: 1.5, dust: 3200, shadowMap: 1024, coreShadows: 512 },
+  low: { pixelRatio: 1, dust: 1400, shadowMap: 512, coreShadows: 0 },
 };
 
 // Filmic cadence: 30fps divides 60/120Hz evenly (24 judders on 60Hz panels) and halves GPU work.
