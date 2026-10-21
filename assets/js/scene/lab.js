@@ -35,6 +35,8 @@ const bays = (m) => {
   const column = [[-0.25, 0], [0.25, 0], [0.25, h - 0.4], [0.1, h], [-0.25, h]];
   const housing = new BoxGeometry(2.8, 0.06, 1.6);
   const panel = new BoxGeometry(2.6, 0.02, 1.4);
+  const beamHousing = new BoxGeometry(1.9, 0.08, 0.32);
+  const beamPanel = new BoxGeometry(1.8, 0.02, 0.24);
   const objects = [];
 
   for (let z = ROOM.near - 3; z > far + 2; z -= BAY) {
@@ -47,6 +49,13 @@ const bays = (m) => {
       at(mesh(housing, m.housing, still), x, h - 0.03, z - BAY / 2),
       at(mesh(panel, m.light, still), x, h - 0.07, z - BAY / 2),
     ));
+    // Beam-mounted pairs beyond the orb, bright enough to read through the haze.
+    if (z < CELL.z - 3) {
+      [-2.4, 2.4].forEach((x) => objects.push(
+        at(mesh(beamHousing, m.housing, still), x, h - 0.64, z),
+        at(mesh(beamPanel, m.beamLight, still), x, h - 0.69, z),
+      ));
+    }
   }
 
   const kick = new BoxGeometry(0.04, 0.03, ROOM.length);

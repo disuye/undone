@@ -218,6 +218,7 @@ export const createMaterials = (room) => {
     screen: emissive(0xcfe0e4, 0.9),
     panel: emissive(0xfff9f0, 1.6),
     light: emissive(0xfffcf8, 3.2),
+    beamLight: emissive(0xfffcf8, 8),
     glow: emissive(0xfff8ef, 2.4),
     neon: emissive(0xfdfd0d, 1.4),
   };
