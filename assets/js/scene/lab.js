@@ -1,5 +1,5 @@
 import {
-  BoxGeometry, Group, HemisphereLight,
+  BoxGeometry, CylinderGeometry, Group, HemisphereLight,
   PlaneGeometry, RectAreaLight, SpotLight, Vector3,
 } from '../vendor/three.module.js';
 import { aimYaw, createArm } from './arm.js';
@@ -8,7 +8,7 @@ import { createCore } from './core.js';
 import { createEquipment } from './equipment.js';
 import { createMarkings } from './markings.js';
 import { createDust } from './dust.js';
-import { createMaterials } from './materials.js';
+import { CEILING_K, createMaterials, kelvin } from './materials.js';
 import { at, block, hose, mesh, plate } from './parts.js';
 
 export const ROOM = { width: 11, height: 5.2, length: 46, near: 9 };
@@ -25,7 +25,10 @@ const shell = (m) => {
     at(mesh(new PlaneGeometry(w, l), m.floor, still), 0, 0, midZ, -Math.PI / 2),
     at(mesh(new PlaneGeometry(w, l), m.ceiling, still), 0, h, midZ, Math.PI / 2),
     ...[-1, 1].map((side) => at(mesh(new PlaneGeometry(l, h), m.wall, still), side * w / 2, h / 2, midZ, 0, -side * Math.PI / 2)),
-    at(mesh(new PlaneGeometry(w, h), m.wall, still), 0, h / 2, far),
+    at(mesh(new PlaneGeometry(w, h), m.lightWall, still), 0, h / 2, far),
+    // Recessed floor uplight under the orb.
+    at(mesh(new CylinderGeometry(0.42, 0.42, 0.012, 48), m.housing, still), CELL.x, 0.006, CELL.z),
+    at(mesh(new CylinderGeometry(0.32, 0.32, 0.016, 48), m.tube, still), CELL.x, 0.008, CELL.z),
   ];
 };
 
@@ -47,7 +50,7 @@ const bays = (m) => {
     );
     [-2.4, 2.4].forEach((x) => objects.push(
       at(mesh(housing, m.housing, still), x, h - 0.03, z - BAY / 2),
-      at(mesh(panel, m.light, still), x, h - 0.07, z - BAY / 2),
+      at(mesh(panel, m.tube, still), x, h - 0.07, z - BAY / 2),
     ));
     // Beam-mounted pairs beyond the orb, bright enough to read through the haze.
     if (z < CELL.z - 3) {
@@ -59,29 +62,37 @@ const bays = (m) => {
   }
 
   const kick = new BoxGeometry(0.04, 0.03, ROOM.length);
-  [-1, 1].forEach((side) => objects.push(at(mesh(kick, m.light, still), side * (w / 2 - 0.02), 0.22, midZ)));
+  [-1, 1].forEach((side) => objects.push(at(mesh(kick, m.tube, still), side * (w / 2 - 0.02), 0.22, midZ)));
   return objects;
 };
 
+// Low-key: dim fill, bright tubes, pools of light rather than an evenly lit room.
+const LIGHTING = { hemi: 0.05, rect: 1.6, key: 22, uplight: 16 };
+
 const lights = () => {
   const { height: h } = ROOM;
-  const hemi = new HemisphereLight(0xfffdfa, 0x8f8c84, 0.38);
+  const hemi = new HemisphereLight(0xfffdfa, 0x8f8c84, LIGHTING.hemi);
 
   const rects = [CELL.z + BAY / 2, CELL.z - BAY / 2].flatMap((z) => [-2.4, 2.4].map((x) => {
-    const rect = new RectAreaLight(0xfffcf7, 3, 2.6, 1.4);
+    const rect = new RectAreaLight(kelvin(CEILING_K), LIGHTING.rect, 2.6, 1.4);
     rect.position.set(x, h - 0.1, z);
     rect.lookAt(x, 0, z);
     return rect;
   }));
 
-  const key = new SpotLight(0xfffaf2, 34, 12, 0.62, 0.85, 2);
+  const key = new SpotLight(kelvin(CEILING_K), LIGHTING.key, 12, 0.55, 0.85, 2);
   key.position.set(0.6, h - 0.15, CELL.z + 0.4);
   key.target.position.copy(CELL).setY(0);
   key.castShadow = true;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
 
-  return [hemi, ...rects, key, key.target];
+  // Uplight from the floor fixture: unshadowed, narrow enough to stay on the orb.
+  const up = new SpotLight(kelvin(CEILING_K), LIGHTING.uplight, 5, 0.42, 0.7, 2);
+  up.position.set(CELL.x, 0.05, CELL.z);
+  up.target.position.copy(CELL).setY(CELL.y + 1);
+
+  return [hemi, ...rects, key, key.target, up, up.target];
 };
 
 // Arm placements relative to the work cell; poses lean in toward the core.
@@ -127,7 +138,7 @@ const arms = (m) => ARMS.map(({ at: [x, y, z], flip, poses, timing }) => {
   arm.object.rotation.y = yaw;
   if (flip) {
     mount.rotation.x = Math.PI;
-    mount.add(at(block(0.9, 0.12, 0.9, m.armourGrey), 0, -0.06, 0));
+    mount.add(at(block(0.9, 0.12, 0.9, m.armShellGrey), 0, -0.06, 0));
   }
   mount.add(arm.object);
   return {
