@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Block commits that introduce drift between index.html and the Wagtail templates.
+# Bypass once with: git commit --no-verify
+set -euo pipefail
+
+WATCHED='^(index\.html|cms/templates/|cms/pages/templates/|cms/pages/blocks\.py|cms/pages/wagtail_hooks\.py|assets/css/)'
+
+git diff --cached --name-only --diff-filter=ACMR | grep -qE "$WATCHED" || exit 0
+
+ROOT="$(git rev-parse --show-toplevel)"
+if ! out="$(python3 "$ROOT/_scripts/markup_drift.py" --strict)"; then
+  grep '^WARN' <<<"$out" >&2
+  echo "pre-commit: markup drift between index.html and templates (see above)." >&2
+  exit 1
+fi
