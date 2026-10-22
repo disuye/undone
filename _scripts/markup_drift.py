@@ -73,6 +73,7 @@ class Component:
         self.key, self.source = key, source
         self.paths = defaultdict(dict)  # path -> {attr: value}
         self.slots = set()  # paths containing a CMS slot (rich text / include_block)
+        self.lines = {}  # path -> first source line
 
 
 class Skeleton(HTMLParser):
@@ -81,28 +82,30 @@ class Skeleton(HTMLParser):
         self.source = source
         self.stack = []  # (tag, path, component, in_text)
         self.components = []
-        self.ids = []
-        self.refs = []  # (attr, target)
+        self.ids = []  # (id, line)
+        self.refs = []  # (attr, target, line)
 
     def handle_starttag(self, tag, attr_list):
         attrs = {k: (v or "") for k, v in attr_list}
         parent = self.stack[-1] if self.stack else None
         in_text = bool(parent and (parent[3] or parent[0] in TEXT_CONTAINERS))
         key = attrs.get("data-is") or (tag if tag in LANDMARKS else None)
+        line = self.getpos()[0]
 
         if "id" in attrs:
-            self.ids.append(attrs["id"])
+            self.ids.append((attrs["id"], line))
         for ref in ("aria-controls", "popovertarget", "href"):
             target = attrs.get(ref, "")
             if ref == "href":
                 target = target[1:] if target.startswith("#") and len(target) > 1 else ""
             if target:
-                self.refs.append((ref, target))
+                self.refs.append((ref, target, line))
 
         sig = signature(tag, attrs)
         if parent and parent[2] and (not in_text or "data-is" in attrs):
             path = f"{parent[1]}>{sig}"
             parent[2].paths[path].update({} if key else attrs)
+            parent[2].lines.setdefault(path, line)
         else:
             path = sig if parent is None or not parent[2] else parent[1]
 
@@ -110,6 +113,7 @@ class Skeleton(HTMLParser):
         if key:
             comp = Component(key, self.source)
             comp.paths["."].update(attrs)
+            comp.lines["."] = line
             self.components.append(comp)
             path = "."
         if tag not in VOID:
@@ -147,7 +151,41 @@ def merge(components):
         for path, attrs in c.paths.items():
             m.paths[path].update(attrs)
         m.slots |= c.slots
+        for path, line in c.lines.items():
+            m.lines.setdefault(path, line)
     return merged
+
+
+# --- source locations -------------------------------------------------------
+# Templates are parsed after inlining, so their lines are found again in the raw files.
+
+def template_files():
+    return [(f.relative_to(ROOT), f.read_text().splitlines()) for d in TEMPLATE_DIRS for f in sorted(d.rglob("*.html"))]
+
+
+def matches(text, segment):
+    tag, attrs = re.match(r"([\w-]+)(.*)", segment).groups()
+    if not re.search(rf"<{tag}[\s>/]", text):
+        return False
+    return all(f'{k}="{v}"' in text if v else f" {k}" in text
+               for k, v in re.findall(r"\[([\w-]+)(?:=([^\]]*))?\]", attrs))
+
+
+def template_location(files, key, path="."):
+    hits = [(name, i) for name, lines in files for i, text in enumerate(lines)
+            if (re.search(rf"<{key}[\s>]", text) if key in LANDMARKS else f'data-is="{key}"' in text)]
+    if not hits:
+        return "template ?"
+    name, start = next(((n, i) for n, i in hits if n.stem == key), hits[0])
+    lines = dict(files)[name]
+    seg = path.rsplit(">", 1)[-1]
+    if path != ".":
+        start = next((i for i in range(start, len(lines)) if matches(lines[i], seg)), start)
+    return f"{name}:{start + 1}"
+
+
+def demo_location(comp, path="."):
+    return f"index.html:{comp.lines.get(path, comp.lines['.'])}"
 
 
 # --- comparison -------------------------------------------------------------
@@ -162,51 +200,62 @@ def under_slot(path, slots):
 
 def compare(demo, tmpl, rich_text):
     warn, info = [], []
+    files = template_files()
+
+    def at(key, path=".", demo_path=None, tmpl_path=None):
+        d = demo_location(demo[key], demo_path or path) if key in demo else None
+        t = template_location(files, key, tmpl_path or path) if key in tmpl else None
+        return "  (" + " · ".join(x for x in (d, t) if x) + ")"
+
     for key in sorted(demo.keys() - tmpl.keys()):
         if key in rich_text:
-            info.append(f"[{key}] rendered by a rich-text feature, not a template")
+            info.append(f"[{key}] rendered by a rich-text feature, not a template" + at(key))
         else:
-            warn.append(f"[{key}] in index.html only — no template renders it")
+            warn.append(f"[{key}] in index.html only — no template renders it" + at(key))
     for key in sorted(tmpl.keys() - demo.keys()):
-        info.append(f"[{key}] in templates only — not demoed in index.html")
+        info.append(f"[{key}] in templates only — not demoed in index.html" + at(key))
 
     for key in sorted(demo.keys() & tmpl.keys()):
         d, t = demo[key], tmpl[key]
         for path in sorted(d.paths.keys() - t.paths.keys()):
-            msg = f"[{key}] {path}: in index.html, not in template"
-            (info if under_slot(path, t.slots) else warn).append(msg + (" (may come from a CMS slot)" if under_slot(path, t.slots) else ""))
+            slot = under_slot(path, t.slots)
+            msg = f"[{key}] {path}: in index.html, not in template" + (" (may come from a CMS slot)" if slot else "")
+            (info if slot else warn).append(msg + at(key, demo_path=path, tmpl_path="."))
         for path in sorted(t.paths.keys() - d.paths.keys()):
-            warn.append(f"[{key}] {path}: in template, not in index.html")
+            warn.append(f"[{key}] {path}: in template, not in index.html" + at(key, demo_path=".", tmpl_path=path))
         for path in sorted(d.paths.keys() & t.paths.keys()):
             da, ta = d.paths[path], t.paths[path]
+            loc = at(key, path)
             for attr in sorted(da.keys() - ta.keys()):
-                warn.append(f"[{key}] {path}: @{attr} only in index.html")
+                warn.append(f"[{key}] {path}: @{attr} only in index.html" + loc)
             for attr in sorted(ta.keys() - da.keys()):
-                (info if attr == "id" and is_var(ta[attr]) else warn).append(f"[{key}] {path}: @{attr} only in template")
+                (info if attr == "id" and is_var(ta[attr]) else warn).append(f"[{key}] {path}: @{attr} only in template" + loc)
             for attr in sorted(da.keys() & ta.keys()):
                 if attr in VOLATILE_ATTRS or is_var(ta[attr]) or attr == "id":
                     continue
                 if da[attr] != ta[attr]:
-                    warn.append(f'[{key}] {path}: @{attr} "{da[attr]}" (index.html) vs "{ta[attr]}" (template)')
+                    warn.append(f'[{key}] {path}: @{attr} "{da[attr]}" (index.html) vs "{ta[attr]}" (template)' + loc)
     return warn, info
 
 
 def check_demo_refs(demo):
     warn = []
-    ids = demo.ids
-    for dup in sorted({i for i in ids if ids.count(i) > 1}):
-        warn.append(f'index.html: duplicate id="{dup}"')
-    for attr, target in demo.refs:
+    ids = [i for i, _ in demo.ids]
+    for value, line in demo.ids:
+        if ids.count(value) > 1:
+            warn.append(f'index.html:{line}: duplicate id="{value}"')
+    for attr, target, line in demo.refs:
         if target not in ids:
-            warn.append(f'index.html: {attr}="{target}" has no matching id')
+            warn.append(f'index.html:{line}: {attr}="{target}" has no matching id')
     return warn
 
 
 def check_block_ids():
     warn = []
     for f in sorted(template_path(BLOCKS).glob("*.html")):
-        for value in set(re.findall(r'\bid="([^"{]+)"', f.read_text())) - ALLOWED_BLOCK_IDS:
-            warn.append(f'{f.relative_to(ROOT)}: hardcoded id="{value}" — duplicates if the block is used twice; may shadow a divider anchor')
+        for n, text in enumerate(f.read_text().splitlines(), 1):
+            for value in set(re.findall(r'\bid="([^"{]+)"', text)) - ALLOWED_BLOCK_IDS:
+                warn.append(f'{f.relative_to(ROOT)}:{n}: hardcoded id="{value}" — duplicates if the block is used twice; may shadow a divider anchor')
     return warn
 
 
