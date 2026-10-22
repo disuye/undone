@@ -118,6 +118,9 @@ html {
 	color: var(--paper);
 	overflow-x: clip;
 	scroll-behavior: smooth;
+}
+
+html:has([data-is="masthead"] > nav) {
 	scroll-padding-top: calc(var(--nav-h) + var(--pad-top));
 }
 
@@ -594,6 +597,17 @@ main > [data-is="spec"] {
 	font: 700 var(--step-1) / 1.2 var(--font-display);
 	text-transform: uppercase;
 	letter-spacing: var(--track-tight);
+}
+
+/* TEMP: launch banner inside splash — remove with the banner */
+[data-is="splash"]:has(> [data-is="banner"]) {
+	grid-template-columns: 100%;
+}
+
+[data-is="splash"] > [data-is="banner"] {
+	justify-self: stretch;
+	margin-inline: 0;
+	text-align: start;
 }
 
 [data-is="cta"] {

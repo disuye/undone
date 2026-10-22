@@ -1,5 +1,5 @@
 {% if value.prompt %}<p>{{ value.prompt }}</p>{% endif %}
-<form data-is="contact" action="#" method="post" id="contact">
+<form data-is="contact" action="#" method="post" id="contact-form">
 	{% csrf_token %}
 	<div data-is="field">
 		<input type="text" name="name" placeholder="Name" aria-label="Name" autocomplete="name" required>
