@@ -3,17 +3,16 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-		<title>{% block title %}{% firstof page.seo_title page.title %} — Undone Limited{% endblock %}</title>
-		<meta name="description" content="{% firstof page.search_description 'Undone Ltd — Research & Development. Hong Kong.' %}">
+		<title>{% block title %}{% firstof page.seo_title page.title %} | Undone Limited{% endblock %}</title>
+		<meta name="description" content="{% firstof page.search_description 'Undone Limited | Creative R&D · Hong Kong' %}">
 		{% if page %}<link rel="canonical" href="{{ page.full_url }}">{% endif %}
 
 		<meta name="color-scheme" content="light">
-		<meta name="theme-color" content="#FF5A2C">
-
+		<meta name="theme-color" content="#000000">
 		<meta property="og:type" content="website">
 		{% if page %}<meta property="og:url" content="{{ page.full_url }}">{% endif %}
 		<meta property="og:title" content="{% firstof page.seo_title page.title 'Undone Limited' %}">
-		<meta property="og:description" content="{% firstof page.search_description 'Research & Development. Hong Kong.' %}">
+		<meta property="og:description" content="{% firstof page.search_description 'Creative R&D · Hong Kong' %}">
 		<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'assets/img/undone-og.png' %}">
 		<meta property="og:image:width" content="1200">
 		<meta property="og:image:height" content="630">
