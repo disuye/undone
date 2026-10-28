@@ -509,6 +509,10 @@ article > p:not([data-is]) {
 	max-inline-size: var(--measure);
 }
 
+main > [data-is="card"] {
+	max-inline-size: calc(var(--measure) + 2 * var(--space-m));
+}
+
 article figure img,
 [data-is="photo"] img {
 	inline-size: 100%;
@@ -534,12 +538,13 @@ article figure img {
 }
 
 [data-is="quote"] {
+	container-type: inline-size;
 	color: var(--neon);
 	border-color: var(--neon);
 }
 
 [data-is="quote"] > p:first-child {
-	font: 900 var(--step-3) / var(--leading-tight) var(--font-display);
+	font: 900 min(var(--step-3), 16cqi) / var(--leading-tight) var(--font-display);
 	letter-spacing: var(--track-tight);
 	text-wrap: balance;
 }
@@ -559,6 +564,10 @@ main > [data-is="spec"] {
 	border-color: var(--ink);
 }
 
+[data-is="spec"] h4 {
+	font-size: var(--step-0);
+}
+
 [data-is="spec"] [role="list"] {
 	display: grid;
 	border-block-start: var(--hairline) solid var(--rule-ink);
@@ -567,6 +576,8 @@ main > [data-is="spec"] {
 [data-is="spec"] [role="listitem"] {
 	display: flex;
 	justify-content: space-between;
+	align-items: baseline;
+	text-transform: capitalize;
 	gap: var(--space-s);
 	padding-block: var(--space-2xs);
 	border-block-end: var(--hairline) solid var(--rule-ink);
@@ -578,8 +589,18 @@ main > [data-is="spec"] {
 	background-color: var(--neon);
 }
 
-[data-is="spec"] [role="listitem"] > p:last-child {
-	font-family: var(--font-mono);
+main {
+	counter-reset: numspec;
+}
+
+[data-is="spec"] [role="listitem"] {
+	counter-increment: numspec;
+}
+
+[data-is="spec"] [role="listitem"]::after {
+	content: "UNDN-" counter(numspec, decimal-leading-zero);
+	font: var(--step--2) / 1 var(--font-mono);
+	letter-spacing: var(--track-caps);
 }
 
 [data-is="banner"] {
@@ -743,8 +764,12 @@ textarea {
 
 [data-is="newsletter"] button {
 	flex: none;
+	--x: transparent calc(50% - var(--hairline) / 2), currentColor 0 calc(50% + var(--hairline) / 2), transparent 0;
 	padding: var(--space-2xs) var(--space-s);
-	background: var(--paper);
+	background:
+		linear-gradient(to top right, var(--x)),
+		linear-gradient(to bottom right, var(--x)),
+		var(--paper);
 	color: var(--ink);
 }
 
