@@ -6,10 +6,15 @@ layout rules in style.css (nth-child of article/figure) apply unchanged.
 
 import re
 
+from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
 from wagtail import blocks
+from wagtail.embeds.blocks import EmbedBlock
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.rich_text import RichText
+from wagtailmedia.blocks import VideoChooserBlock
+
+from .embeds import frame_for
 
 RICH_TEXT = ["brand", "highlight", "zh", "emphasis", "link"]
 PARAGRAPH_EDGES = re.compile(r"^<p>|</p>$")
@@ -73,11 +78,32 @@ class DividerBlock(blocks.StructBlock):
         template = "pages/blocks/divider.html"
 
 
+class FrameEmbedBlock(EmbedBlock):
+    """Embeds that render as an iframe player; card.html writes the <iframe> itself."""
+
+    def clean(self, value):
+        value = super().clean(value)
+        if value and not frame_for(value.url):
+            raise ValidationError("This link doesn't embed as a player. Use a YouTube or Vimeo video page URL.")
+        return value
+
+
+class CardMediaBlock(blocks.StreamBlock):
+    """One figure per card; markup lives in card.html so the drift check sees every variant."""
+
+    image = ImageChooserBlock()
+    video = VideoChooserBlock(help_text="Plays muted on loop, like a moving image.")
+    embed = FrameEmbedBlock(help_text="YouTube or Vimeo page URL; served from their no-tracking players.")
+
+    class Meta:
+        max_num = 1
+
+
 class CardBlock(blocks.StructBlock):
     meta = blocks.CharBlock(required=False, help_text="Mono label, e.g. 'PRJ-014 · Audio · Ongoing'.")
     heading = InlineTextBlock()
     standfirst = InlineTextBlock(required=False)
-    image = ImageChooserBlock(required=False)
+    media = CardMediaBlock(required=False)
     body = blocks.RichTextBlock(features=RICH_TEXT, required=False)
     cta = CTABlock()
 

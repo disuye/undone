@@ -3,7 +3,7 @@
 # Bypass once with: git commit --no-verify
 set -euo pipefail
 
-WATCHED='^(index\.html|cms/templates/|cms/pages/templates/|cms/pages/blocks\.py|cms/pages/wagtail_hooks\.py|assets/css/)'
+WATCHED='^(index\.html|cms/templates/|cms/pages/templates/|cms/pages/blocks\.py|cms/pages/wagtail_hooks\.py|assets/css/|assets/js/)'
 
 git diff --cached --name-only --diff-filter=ACMR | grep -qE "$WATCHED" || exit 0
 

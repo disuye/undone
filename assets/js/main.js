@@ -150,7 +150,15 @@ const revealOnScroll = (els) => {
   els.forEach((el) => observer.observe(el));
 };
 
+// Reduced motion: looping clips stay paused; native controls let the viewer opt in.
+const holdForReducedMotion = (video) => {
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  video.pause();
+  video.controls = true;
+};
+
 revealOnScroll(document.querySelectorAll('main > *'));
+document.querySelectorAll('video[autoplay]').forEach(holdForReducedMotion);
 document.querySelectorAll('[data-is="vertical-logo"]').forEach(driveParallax);
 document.querySelectorAll('button[aria-controls][aria-expanded]').forEach(toggleDisclosure);
 document.querySelectorAll('[data-is="nav-menu"]').forEach(closeMenuOnNavigate);

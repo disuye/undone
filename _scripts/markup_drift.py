@@ -22,6 +22,9 @@ STYLE_GLOBS = ["assets/css/*.css", "assets/js/**/*.js"]
 ALLOWED_BLOCK_IDS = {"contact-form"}
 
 VAR = "__VAR__"
+STREAM = "__STREAM__"  # {% include_block %}: may hold other blocks, not just rich text
+BLOCKS_PY = ROOT / "cms/pages/blocks.py"
+RICH_TEXT_TAGS = {"p", "b", "i", "em", "a", "br"}  # what Draftail can emit with the site's features
 LANDMARKS = {"head", "body", "header", "nav", "main", "footer"}
 TEXT_CONTAINERS = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "a", "button", "li", "label", "figcaption", "i", "b", "em", "strong", "span"}
 VOID = {"meta", "link", "img", "input", "br", "hr", "source", "wbr"}
@@ -54,9 +57,9 @@ def resolve_template(name):
 
 
 def strip_django(src):
-    """Template tags -> removed (both branches kept), vars -> VAR, include_block -> slot."""
+    """Template tags -> removed (both branches kept), vars -> VAR, include_block -> STREAM."""
     src = re.sub(r"{#.*?#}", "", src, flags=re.S)
-    src = re.sub(r"{%\s*include_block\b.*?%}", VAR, src)
+    src = re.sub(r"{%\s*include_block\b.*?%}", STREAM, src)
     src = re.sub(r"{%.*?%}", "", src, flags=re.S)
     return re.sub(r"{{.*?}}", VAR, src, flags=re.S)
 
@@ -72,7 +75,7 @@ class Component:
     def __init__(self, key, source):
         self.key, self.source = key, source
         self.paths = defaultdict(dict)  # path -> {attr: value}
-        self.slots = set()  # paths containing a CMS slot (rich text / include_block)
+        self.slots = {}  # path -> VAR (rich text) or STREAM (include_block)
         self.lines = {}  # path -> first source line
 
 
@@ -80,10 +83,11 @@ class Skeleton(HTMLParser):
     def __init__(self, source):
         super().__init__(convert_charrefs=True)
         self.source = source
-        self.stack = []  # (tag, path, component, in_text)
+        self.stack = []  # (tag, path, component, in_text, line)
         self.components = []
         self.ids = []  # (id, line)
         self.refs = []  # (attr, target, line)
+        self.nesting = []  # (line, message): unclosed or stray tags
 
     def handle_starttag(self, tag, attr_list):
         attrs = {k: (v or "") for k, v in attr_list}
@@ -117,7 +121,7 @@ class Skeleton(HTMLParser):
             self.components.append(comp)
             path = "."
         if tag not in VOID:
-            self.stack.append((tag, path, comp, in_text))
+            self.stack.append((tag, path, comp, in_text, line))
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -125,16 +129,31 @@ class Skeleton(HTMLParser):
             self.stack.pop()
 
     def handle_endtag(self, tag):
+        line = self.getpos()[0]
         for i in range(len(self.stack) - 1, -1, -1):
             if self.stack[i][0] == tag:
+                for open_tag, *_, open_line in self.stack[i + 1:]:
+                    self.nesting.append((open_line, f"<{open_tag}> is never closed (implicitly closed by </{tag}> on line {line})"))
                 del self.stack[i:]
                 return
+        self.nesting.append((line, f"</{tag}> has no matching open tag"))
+
+    def close(self):
+        super().close()
+        for open_tag, *_, open_line in self.stack:
+            self.nesting.append((open_line, f"<{open_tag}> is never closed"))
 
     def handle_data(self, data):
-        if self.stack and data.strip() == VAR:
-            tag, path, comp, in_text = self.stack[-1]
+        kind = data.strip()
+        if self.stack and kind in (VAR, STREAM):
+            tag, path, comp, in_text, _ = self.stack[-1]
             if comp and not in_text and tag not in TEXT_CONTAINERS:
-                comp.slots.add(path)
+                add_slot(comp.slots, path, kind)
+
+
+def add_slot(slots, path, kind):
+    if slots.get(path) != STREAM:
+        slots[path] = kind
 
 
 def parse(src, source):
@@ -150,7 +169,8 @@ def merge(components):
         m = merged.setdefault(c.key, Component(c.key, c.source))
         for path, attrs in c.paths.items():
             m.paths[path].update(attrs)
-        m.slots |= c.slots
+        for path, kind in c.slots.items():
+            add_slot(m.slots, path, kind)
         for path, line in c.lines.items():
             m.lines.setdefault(path, line)
     return merged
@@ -194,8 +214,23 @@ def is_var(value):
     return VAR in value
 
 
-def under_slot(path, slots):
-    return any(s == "." or path == s or path.startswith(s + ">") for s in slots)
+def slot_kind(path, slots):
+    """STREAM if any enclosing slot is an include_block, VAR if only rich text, None if no slot."""
+    kinds = {k for s, k in slots.items() if s == "." or path == s or path.startswith(s + ">")}
+    return STREAM if STREAM in kinds else (VAR if kinds else None)
+
+
+def producible(path, kind, rich_text, components):
+    """Could the slot emit this element: a rich-text mark on its own tag, or (stream only) a templated block?"""
+    seg = path.rsplit(">", 1)[-1]
+    tag = re.match(r"[\w-]+", seg).group()
+    data_is = re.search(r"\[data-is=([\w-]+)\]", seg)
+    if not data_is:
+        return tag in RICH_TEXT_TAGS
+    key = data_is.group(1)
+    if key in rich_text:
+        return rich_text[key] == tag
+    return kind == STREAM and key in components
 
 
 def compare(demo, tmpl, rich_text):
@@ -218,9 +253,14 @@ def compare(demo, tmpl, rich_text):
     for key in sorted(demo.keys() & tmpl.keys()):
         d, t = demo[key], tmpl[key]
         for path in sorted(d.paths.keys() - t.paths.keys()):
-            slot = under_slot(path, t.slots)
-            msg = f"[{key}] {path}: in index.html, not in template" + (" (may come from a CMS slot)" if slot else "")
-            (info if slot else warn).append(msg + at(key, demo_path=path, tmpl_path="."))
+            msg = f"[{key}] {path}: in index.html, not in template"
+            kind = slot_kind(path, t.slots)
+            if not kind:
+                warn.append(msg + at(key, demo_path=path, tmpl_path="."))
+            elif producible(path, kind, rich_text, tmpl.keys()):
+                info.append(msg + " (may come from a CMS slot)" + at(key, demo_path=path, tmpl_path="."))
+            else:
+                warn.append(msg + " (a CMS slot can't produce it)" + at(key, demo_path=path, tmpl_path="."))
         for path in sorted(t.paths.keys() - d.paths.keys()):
             warn.append(f"[{key}] {path}: in template, not in index.html" + at(key, demo_path=".", tmpl_path=path))
         for path in sorted(d.paths.keys() & t.paths.keys()):
@@ -236,6 +276,10 @@ def compare(demo, tmpl, rich_text):
                 if da[attr] != ta[attr]:
                     warn.append(f'[{key}] {path}: @{attr} "{da[attr]}" (index.html) vs "{ta[attr]}" (template)' + loc)
     return warn, info
+
+
+def check_demo_nesting(demo):
+    return [f"index.html:{line}: {msg}" for line, msg in sorted(demo.nesting)]
 
 
 def check_demo_refs(demo):
@@ -259,8 +303,43 @@ def check_block_ids():
     return warn
 
 
+def optional_fields():
+    """Block template name -> field names declared required=False on its block (and nested structs)."""
+    src = BLOCKS_PY.read_text()
+    classes = dict(re.findall(r"^class (\w+)\(.*?\):\n(.*?)(?=^class |\Z)", src, re.S | re.M))
+
+    def fields(name, seen=()):
+        body = classes[name]
+        found = {name for name, args in re.findall(r"^\s+(\w+) = [\w.]+\(((?:[^()]|\([^()]*\))*)\)", body, re.M)
+                 if "required=False" in args}
+        for child in re.findall(r"\b(\w+)\(\)", body):
+            if child in classes and child not in seen:
+                found |= fields(child, seen + (name,))
+        return found
+
+    return {m.group(1): fields(name) for name, body in classes.items()
+            if (m := re.search(r'template = "pages/blocks/([\w.]+)"', body))}
+
+
+def check_unguarded_optionals():
+    """An optional field printed as an element's only content, outside {% if %}, leaves an empty element."""
+    warn = []
+    for name, optional in optional_fields().items():
+        f = template_path(f"{BLOCKS}/{name}")
+        src, depth = f.read_text(), 0
+        for token in re.finditer(r"{%\s*(if|endif)\b.*?%}|>\s*{{\s*(?:value|row)\.(\w+)[^}]*}}\s*<", src):
+            if token.group(1):
+                depth += 1 if token.group(1) == "if" else -1
+            elif depth == 0 and token.group(2) in optional:
+                line = src.count("\n", 0, token.start()) + 1
+                warn.append(f"{f.relative_to(ROOT)}:{line}: optional field '{token.group(2)}' printed without {{% if %}} — renders an empty element when blank")
+    return warn
+
+
 def rich_text_keys():
-    return set(re.findall(r'"data-is":\s*"([\w-]+)"', (ROOT / "cms/pages/wagtail_hooks.py").read_text()))
+    """data-is value -> element tag, for the inline marks registered in wagtail_hooks.py."""
+    src = (ROOT / "cms/pages/wagtail_hooks.py").read_text()
+    return {key: tag for tag, key in re.findall(r'"element":\s*"(\w+)",\s*"props":\s*{"data-is":\s*"([\w-]+)"', src)}
 
 
 def check_vocabulary(keys):
@@ -285,7 +364,7 @@ def main():
     tmpl_comps = merge(c for p in template_parsers for c in p.components)
 
     warn, info = compare(demo_comps, tmpl_comps, rich_text_keys())
-    warn += check_demo_refs(demo) + check_block_ids()
+    warn += check_demo_nesting(demo) + check_demo_refs(demo) + check_block_ids() + check_unguarded_optionals()
     info += check_vocabulary(demo_comps.keys() | tmpl_comps.keys())
 
     for label, items in (("WARN", warn), ("INFO", info)):

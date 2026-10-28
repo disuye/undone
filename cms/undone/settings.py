@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "wagtail.search",
     "wagtail.admin",
     "wagtail",
+    "wagtailmedia",
     "modelcluster",
     "taggit",
     "django_filters",
@@ -110,3 +111,5 @@ WAGTAIL_SITE_NAME = "Undone Limited"
 WAGTAILADMIN_BASE_URL = os.environ.get("WAGTAILADMIN_BASE_URL", "http://localhost:8000")
 WAGTAILSEARCH_BACKENDS = {"default": {"BACKEND": "wagtail.search.backends.database"}}
 WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]
+# Card video only: formats every current browser plays natively; no audio library.
+WAGTAILMEDIA = {"AUDIO_EXTENSIONS": [], "VIDEO_EXTENSIONS": ["mp4", "webm"]}

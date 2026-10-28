@@ -1,10 +1,13 @@
-{% load wagtailimages_tags %}<article data-is="card">
+{% load wagtailimages_tags site_tags %}<article data-is="card">
 	{% if value.meta %}<p data-is="meta">{{ value.meta }}</p>{% endif %}
 	<h3>{{ value.heading }}</h3>
 	{% if value.standfirst %}<p data-is="standfirst">{{ value.standfirst }}</p>{% endif %}
-	{% if value.image %}{% image value.image fill-1600x900 as img %}<figure>
-		<img src="{{ img.url }}" width="{{ img.width }}" height="{{ img.height }}" alt="" loading="lazy" decoding="async">
-	</figure>{% endif %}
+	{% for item in value.media %}<figure>
+		{% if item.block_type == "image" %}{% image item.value fill-1600x900 as img %}<img src="{{ img.url }}" width="{{ img.width }}" height="{{ img.height }}" alt="" loading="lazy" decoding="async">
+		{% elif item.block_type == "video" %}<video src="{{ item.value.url }}" autoplay muted loop playsinline></video>
+		{% else %}{% embed_frame item.value.url as frame %}{% if frame %}<iframe src="{{ frame.src }}" title="{{ frame.title|default:'Embedded media' }}" loading="lazy" allow="encrypted-media; fullscreen; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe>{% endif %}
+		{% endif %}
+	</figure>{% endfor %}
 	{{ value.body }}
 	{% include "includes/cta.html" with cta=value.cta %}
 </article>

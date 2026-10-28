@@ -513,16 +513,22 @@ main > [data-is="card"] {
 	max-inline-size: calc(var(--measure) + 2 * var(--space-m));
 }
 
-article figure img,
+article figure :is(img, video, iframe),
 [data-is="photo"] img {
+	display: block;
 	inline-size: 100%;
 	block-size: auto;
+}
+
+article figure img,
+[data-is="photo"] img {
 	filter: grayscale(1) contrast(1.15);
 }
 
-article figure img {
+article figure :is(img, video, iframe) {
 	aspect-ratio: 16 / 9;
 	object-fit: cover;
+	border: 0;
 }
 
 [data-is="photo"] {
