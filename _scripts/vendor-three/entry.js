@@ -34,6 +34,7 @@ export {
   RepeatWrapping,
   SRGBColorSpace,
   Scene,
+  ShaderMaterial,
   Shape,
   SphereGeometry,
   SpotLight,
@@ -41,11 +42,13 @@ export {
   TubeGeometry,
   Vector2,
   Vector3,
+  WebGLRenderTarget,
   WebGLRenderer,
 } from 'three';
 export { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 export { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 export { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+export { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 export { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 export { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 export { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
