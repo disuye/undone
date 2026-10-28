@@ -4,10 +4,42 @@ Each block renders the same markup as the static prototype (index.html), so
 layout rules in style.css (nth-child of article/figure) apply unchanged.
 """
 
+import re
+
+from django.utils.safestring import mark_safe
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
+from wagtail.rich_text import RichText
 
 RICH_TEXT = ["brand", "highlight", "zh", "emphasis", "link"]
+PARAGRAPH_EDGES = re.compile(r"^<p>|</p>$")
+
+
+class InlineRichText(RichText):
+    """Rich text without its <p> wrapper, so it can sit inside headings, labels and links."""
+
+    def __html__(self):
+        html = PARAGRAPH_EDGES.sub("", super().__html__().strip())
+        return mark_safe(html.replace("</p><p>", "<br>"))
+
+
+class InlineTextBlock(blocks.RichTextBlock):
+    """Short text whose only mark is 中 (zh-Hant-HK); replaces CharBlock/TextBlock in visible slots."""
+
+    def __init__(self, **kwargs):
+        super().__init__(features=["zh"], **kwargs)
+
+    def _inline(self, value):
+        return InlineRichText(value.source)
+
+    def to_python(self, value):
+        return self._inline(super().to_python(value))
+
+    def normalize(self, value):
+        return self._inline(super().normalize(value))
+
+    def value_from_form(self, value):
+        return self._inline(super().value_from_form(value))
 
 
 class CTAValue(blocks.StructValue):
@@ -17,7 +49,7 @@ class CTAValue(blocks.StructValue):
 
 
 class CTABlock(blocks.StructBlock):
-    label = blocks.CharBlock(required=False, help_text="Leave empty for no link.")
+    label = InlineTextBlock(required=False, help_text="Leave empty for no link.")
     page = blocks.PageChooserBlock(required=False)
     url = blocks.CharBlock(required=False, help_text="External URL or #anchor; used when no page is chosen.")
 
@@ -27,7 +59,7 @@ class CTABlock(blocks.StructBlock):
 
 
 class DividerBlock(blocks.StructBlock):
-    heading = blocks.CharBlock()
+    heading = InlineTextBlock()
     anchor = blocks.RegexBlock(
         regex=r"^[a-z0-9-]+$",
         required=False,
@@ -43,8 +75,8 @@ class DividerBlock(blocks.StructBlock):
 
 class CardBlock(blocks.StructBlock):
     meta = blocks.CharBlock(required=False, help_text="Mono label, e.g. 'PRJ-014 · Audio · Ongoing'.")
-    heading = blocks.CharBlock()
-    standfirst = blocks.TextBlock(required=False)
+    heading = InlineTextBlock()
+    standfirst = InlineTextBlock(required=False)
     image = ImageChooserBlock(required=False)
     body = blocks.RichTextBlock(features=RICH_TEXT, required=False)
     cta = CTABlock()
@@ -58,7 +90,7 @@ class CardBlock(blocks.StructBlock):
 class PhotoBlock(blocks.StructBlock):
     image = ImageChooserBlock()
     alt = blocks.CharBlock(required=False, help_text="Overrides the image's own alt text.")
-    caption = blocks.CharBlock(required=False)
+    caption = InlineTextBlock(required=False)
 
     class Meta:
         icon = "image"
@@ -67,8 +99,8 @@ class PhotoBlock(blocks.StructBlock):
 
 
 class QuoteBlock(blocks.StructBlock):
-    text = blocks.TextBlock()
-    attribution = blocks.CharBlock(required=False)
+    text = InlineTextBlock()
+    attribution = InlineTextBlock(required=False)
 
     class Meta:
         icon = "openquote"
@@ -77,12 +109,12 @@ class QuoteBlock(blocks.StructBlock):
 
 
 class SpecRowBlock(blocks.StructBlock):
-    label = blocks.CharBlock()
+    label = InlineTextBlock()
     code = blocks.CharBlock(required=False)
 
 
 class SpecBlock(blocks.StructBlock):
-    heading = blocks.CharBlock()
+    heading = InlineTextBlock()
     rows = blocks.ListBlock(SpecRowBlock())
     meta = blocks.CharBlock(required=False)
 
@@ -112,7 +144,7 @@ class StatementBlock(blocks.RichTextBlock):
 
 
 class ContactFormBlock(blocks.StructBlock):
-    prompt = blocks.CharBlock(required=False, default="What's on your mind?")
+    prompt = InlineTextBlock(required=False, default="What's on your mind?")
 
     class Meta:
         icon = "mail"
@@ -121,7 +153,7 @@ class ContactFormBlock(blocks.StructBlock):
 
 
 class PostscriptBlock(blocks.StructBlock):
-    label = blocks.CharBlock(help_text="Button text, e.g. '* Chaos dumplings?'")
+    label = InlineTextBlock(help_text="Button text, e.g. '* Chaos dumplings?'")
     text = blocks.RichTextBlock(features=RICH_TEXT)
 
     class Meta:

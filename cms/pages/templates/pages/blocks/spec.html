@@ -1,7 +1,7 @@
 <article data-is="spec">
 	<h4>{{ value.heading }}</h4>
 	<div role="list">
-		{% for row in value.rows %}<div role="listitem"><p>{{ row.label }}</p><p>{{ row.code }}</p></div>
+		{% for row in value.rows %}<div role="listitem"><p>{{ row.label }}</p>{% if row.code %}<p data-is="meta">{{ row.code }}</p>{% endif %}</div>
 		{% endfor %}
 	</div>
 	{% if value.meta %}<p data-is="meta">{{ value.meta }}</p>{% endif %}
