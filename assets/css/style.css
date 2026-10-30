@@ -139,6 +139,10 @@ h1, h2, h3, h4, h5 {
 	letter-spacing: var(--track-tight);
 }
 
+/* Retain text for SEO but only show inline image */
+h1 { font-size: 0; }
+h1 i { font-size: var(--step-0); }
+
 a {
 	color: inherit;
 	transition: color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
@@ -465,11 +469,11 @@ main > :is([data-is="divider"], [data-is="banner"]) {
 }
 
 /* Desktop: pairs share a row, the second staggered down to keep running order */
-@media (min-width: 64rem) {
+@media (min-width: 80rem) {
 	main > :nth-child(4n+1 of :is(article, figure)) { grid-column: 1 / span 6; }
-	main > :nth-child(4n+2 of :is(article, figure)) { grid-column: 8 / span 5; margin-block-start: var(--stagger); }
+	main > :nth-child(4n+2 of :is(article, figure)) { grid-column: 7 / span 6; margin-block-start: var(--stagger); }
 	main > :nth-child(4n+3 of :is(article, figure)) { grid-column: 2 / span 6; }
-	main > :nth-child(4n+4 of :is(article, figure)) { grid-column: 9 / span 4; margin-block-start: var(--stagger); }
+	main > :nth-child(4n+4 of :is(article, figure)) { grid-column: 8 / span 5; margin-block-start: var(--stagger); }
 	main > [data-is="divider"] + :is(article, figure) { grid-column: 4 / span 8; margin-block-start: 0; }
 }
 
@@ -536,8 +540,9 @@ article figure img,
 
 article figure :is(img, video, iframe) {
 	aspect-ratio: 16 / 9;
-	object-fit: cover;
+	object-fit: contain;
 	border: 0;
+	background-color: var(--ink-55);
 }
 
 [data-is="photo"] {
@@ -631,6 +636,10 @@ main > [data-is="spec"] {
 
 [data-is="spec"] [role="listitem"]:hover {
 	background-color: var(--neon);
+}
+
+[data-is="card"] [role="listitem"] {
+		border-block-start: var(--hairline) solid var(--rule-ink);
 }
 
 main {

@@ -6,3 +6,4 @@ cms/.venv/
 cms/.env
 cms/media/
 cms/static/
+index-content.html
