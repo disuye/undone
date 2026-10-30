@@ -1,6 +1,28 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}{% firstof page.seo_title 'Undone Limited | Creative R&D' %}{% endblock %}
+{% block title %}{% firstof page.seo_title 'Undone Limited | Creative R&amp;D · Hong Kong' %}{% endblock %}
+
+{% block structured_data %}<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "Organization",
+			"name": "Undone Limited",
+			"url": "{{ page.full_url }}",
+			"logo": "{{ request.scheme }}://{{ request.get_host }}{% static 'assets/img/undone-schema.png' %}",
+			"description": "Creative R&D · Hong Kong",
+			"email": "info@undoneltd.com",
+			"address": {
+				"@type": "PostalAddress",
+				"addressLocality": "Hong Kong",
+				"addressCountry": "HK"
+			},
+			"sameAs": [
+				"https://www.undonelimited.com",
+				"https://github.com/disuye"
+			]
+		}
+		</script>{% endblock %}
 
 {% block splash %}
 	<div data-is="splash">

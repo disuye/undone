@@ -4,7 +4,7 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 		<title>{% block title %}{% firstof page.seo_title page.title %} | Undone Limited{% endblock %}</title>
-		<meta name="description" content="{% firstof page.search_description 'Undone Limited | Creative R&D · Hong Kong' %}">
+		<meta name="description" content="{% firstof page.search_description 'Undone Limited | Creative R&amp;D · Hong Kong' %}">
 		{% if page %}<link rel="canonical" href="{{ page.full_url }}">{% endif %}
 
 		<meta name="color-scheme" content="light">
@@ -12,13 +12,16 @@
 		<meta property="og:type" content="website">
 		{% if page %}<meta property="og:url" content="{{ page.full_url }}">{% endif %}
 		<meta property="og:title" content="{% firstof page.seo_title page.title 'Undone Limited' %}">
-		<meta property="og:description" content="{% firstof page.search_description 'Creative R&D · Hong Kong' %}">
+		<meta property="og:description" content="{% firstof page.search_description 'Creative R&amp;D · Hong Kong' %}">
+		<meta property="og:site_name" content="Undone Limited | Creative R&amp;D · Hong Kong">
+		<meta property="og:locale" content="en_HK">
 		<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'assets/img/undone-og.png' %}">
 		<meta property="og:image:width" content="1200">
 		<meta property="og:image:height" content="630">
 		<meta property="og:image:alt" content="Undone Limited logo">
 		<meta name="twitter:card" content="summary_large_image">
 
+		{% block structured_data %}{% endblock %}
 		<link rel="icon" href="{% static 'assets/favicon/favicon.ico' %}" sizes="any">
 		<link rel="icon" type="image/png" sizes="32x32" href="{% static 'assets/favicon/favicon-32x32.png' %}">
 		<link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets/favicon/favicon-16x16.png' %}">
