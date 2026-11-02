@@ -170,11 +170,11 @@ const boot = () => {
   canvas.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
     renderer.setAnimationLoop(null);
-    delete canvas.dataset.ready;
+    canvas.style.removeProperty('--scene-ready');
   });
 
   draw(6, 1);
-  canvas.dataset.ready = '';
+  canvas.style.setProperty('--scene-ready', 1);
   const setLoop = (on) => renderer.setAnimationLoop(on ? frame : null);
   if (!reducedMotion) setLoop(true);
   if (DEBUG) {
@@ -182,8 +182,27 @@ const boot = () => {
       .then(({ attach }) => attach({ canvas, renderer, scene, camera, draw, hooks, setLoop, params, tier }))
       .catch((e) => console.warn('debug hooks:', e.message));
   }
+  return setLoop;
 };
 
+// The [3D] switch: hidden in the markup, only offered where the scene can actually run.
+const toggle = document.querySelector('[data-is="nav-actions"] > [role="switch"]');
+
+// main.js keeps aria-checked in sync with the saved choice; boot is deferred until the scene is first switched on.
+const motionOff = () => toggle?.getAttribute('aria-checked') === 'false';
+
 if (canvas && (!lowSpec || DEBUG)) {
-  try { boot(); } catch (error) { console.warn('scene disabled:', error.message); }
+  if (toggle) toggle.hidden = false;
+  let setLoop = null;
+  const apply = () => {
+    if (motionOff()) return setLoop?.(false);
+    if (setLoop) return setLoop(!reducedMotion);
+    try { setLoop = boot(); } catch (error) {
+      setLoop = () => {};
+      if (toggle) toggle.hidden = true;
+      console.warn('scene disabled:', error.message);
+    }
+  };
+  document.addEventListener('motionchange', apply);
+  apply();
 }
